@@ -63,8 +63,8 @@ class OTPController extends Controller
             }
 
             $otpRecord->delete();
-            $user = User::where('telegram_id', $request->telegram_id);
-            if(!$user->exists()){
+            $user = User::where('telegram_id', $request->telegram_id)->first();
+            if(!$user){
                 return response()->json(['info'=> 'Please Create an Account first'], 404);
         }
             return response()->json(['success' => 'OTP verified successfully', 'user' => [
