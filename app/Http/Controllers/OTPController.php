@@ -20,31 +20,26 @@ class OTPController extends Controller
         $request->validate([
             'telegram_id' => 'required',
         ]);
-        // if(!User::where('phone', $request->phone_number)->exists()){
-        //     return response()->json(['message'=> 'Please Create an Account first'], 404);
-        // }
         $otp = random_int(100000, 999999);
-        $telegram = new Api(env('TELEGRAM_BOT_TOKEN'));
         $message = "Your OneStep OTP is: $otp";
 
         try {
 
-            $otpRecord = OTP::where('telegram_id', $request->telegram_id)->first();
-            if ($otpRecord) {
-                $otpRecord->delete();
-            }
-            // Save OTP to the database
-            OTP::create([
-                'telegram_id' => $request->telegram_id,
-                'otp' => Hash::make($otp),
-                'expires_at' => now()->addMinutes(10),
-            ]);
+            OTP::updateOrCreate(
+                ['telegram_id' => $request->telegram_id],
+                [
+                    'otp' => Hash::make($otp),
+                    'expires_at' => now()->addMinutes(10),
+                ]
+            );
 
+            // Send OTP via Telegram
+            $telegram = new Api(env('TELEGRAM_BOT_TOKEN'));
             $telegram->sendMessage([
                 'chat_id' => $request->telegram_id,
                 'text' => $message,
             ]);
-            return response()->json(['success' => 'OTP sent successfully']);
+            return response()->json(['success' => 'OTP sent successfully'], 201);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to send OTP'], 500);
         }
@@ -68,11 +63,16 @@ class OTPController extends Controller
             }
 
             $otpRecord->delete();
-            
-            if(!User::where('telegram_id', $request->telegram_id)->exists()){
+            $user = User::where('telegram_id', $request->telegram_id);
+            if(!$user->exists()){
                 return response()->json(['info'=> 'Please Create an Account first'], 404);
         }
-            return response()->json(['success' => 'OTP verified successfully']);
+            return response()->json(['success' => 'OTP verified successfully', 'user' => [
+                'user_id' => $user->id,
+                'os_id' => $user->os_id,
+                'username' => $user->username,
+                'telegram_id' => $user->telegram_id
+            ]], 201);
 
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to verify OTP'], 500);

@@ -34,22 +34,30 @@ class AuthController extends Controller
             'passcode' => Hash::make($request->passcode),
         ]);
 
-        return response()->json(['message' => 'Registration successful', 'user' => $user]);
+        return response()->json(['success' => 'Registration successful', 'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'telegram_id' => $user->telegram_id,
+                'os_id' => $user->os_id,
+            ],], 201);
     }
 
     public function login(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'username' => 'required',
-            'telegram_id' => 'required',
             'passcode' => 'required',
         ]);
 
-        $user = User::where('username', $request->username)->where('telegram_id', $request->telegram_id)->first();
-        if (!$user || !Hash::check($request->passcode, $user->passcode)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+        $user = User::where('username', $validated['username'])->first();
+        if (!$user || !Hash::check($validated['passcode'], $user->passcode)) {
+            return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
-        return response()->json(['message' => 'Login successful', 'user' => $user, 'os_id' => $user->os_id]);
+        return response()->json(['success' => 'Login successful', 'user' => [
+                'id' => $user->id,
+                'os_id' => $user->os_id,
+                'username' => $user->username,
+            ],200]);
     }
 }
